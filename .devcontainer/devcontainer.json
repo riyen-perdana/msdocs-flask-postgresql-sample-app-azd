@@ -2,7 +2,7 @@
 	"name": "python-app-service-postgresql-redis-infra",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
-	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	"workspaceFolder": "/workspace",
 	"features": {
 		"ghcr.io/azure/azure-dev/azd:latest": {}
 	},
@@ -25,7 +25,7 @@
 						"previewLimit": 50,
 						"server": "db",
 						"port": 5432,
-						"database": "app",
+						"database": "restaurant_reviews",
 						"username": "app_user",
 						"password": "app_password"
 					}
