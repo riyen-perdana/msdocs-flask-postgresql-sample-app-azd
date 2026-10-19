@@ -153,3 +153,42 @@ Jika `psql` tidak tersedia, cek lewat extension **SQLTools** di sidebar VS Code 
 - Folder `migrations/` tidak menyimpan nama database, jadi tidak perlu diubah.
 - [.github/workflows/python-test.yaml](../.github/workflows/python-test.yaml) memakai database `postgres` khusus untuk CI, jadi tidak terpengaruh.
 - Untuk deployment ke Azure (`azd up`), nama database ditentukan oleh Bicep di [infra/resources.bicep](../infra/resources.bicep) (`<nama-app>-database`), bukan oleh file-file di atas.
+
+## Perbandingan: Menjalankan di GitHub Codespaces
+
+> Bagian ini hanya sebagai bahan perbandingan. Langkah utama di atas tetap untuk menjalankan secara lokal dengan Docker Desktop.
+
+Di Codespaces, container dijalankan di server GitHub, jadi beberapa langkah bisa dilewati.
+
+| Langkah | Lokal (Docker Desktop) | Codespaces |
+|---|---|---|
+| Prasyarat | Docker Desktop + VS Code + extension Dev Containers | Cukup akun GitHub dan browser |
+| 1–3 Ubah `.env`, compose, `devcontainer.json` | Wajib | Cukup pastikan perubahan sudah di-commit dan di-push ke GitHub |
+| 4 Validasi compose | Disarankan | Boleh dilewati. Jika file salah, Codespace gagal dibuat dan log-nya langsung terlihat |
+| 5 Hapus volume lama | Wajib jika pernah dijalankan | Dilewati. Codespace baru selalu mulai dengan volume kosong |
+| 6 Reopen in Container | Wajib | Otomatis. Codespace langsung terbuka di dalam container |
+| 7 Install, migrasi, jalankan | Wajib | **Tetap wajib** |
+| 8 Verifikasi | Wajib | Tetap dilakukan |
+
+### Langkah di Codespaces
+
+1. Buka repository di GitHub, lalu klik **Code → Codespaces → Create codespace on main**.
+2. Tunggu sampai VS Code (versi browser) terbuka. Terminalnya sudah otomatis berada di dalam container (`vscode ➜ /workspace $`).
+3. Jalankan:
+
+   ```bash
+   pip install -r requirements.txt
+   flask db upgrade
+   flask run --host 0.0.0.0 --port 8000
+   ```
+
+4. Saat muncul notifikasi **"Your application running on port 8000 is available"**, klik **Open in Browser**.
+
+### Perbedaan yang perlu diperhatikan
+
+- **Alamat aplikasi** bukan `localhost:8000`, melainkan `https://<nama-codespace>-8000.app.github.dev` (lihat tab **Ports**).
+- **Troubleshooting lebih sedikit.** Error Docker Desktop/WSL dan `could not translate host name "db"` praktis tidak muncul, karena terminal selalu berada di dalam container.
+- **Jika file `.devcontainer/` diubah** setelah Codespace dibuat, jalankan `F1` → **Codespaces: Rebuild Container**. Volume database lama tetap ada saat rebuild. Untuk database yang benar-benar bersih, hapus Codespace lalu buat yang baru.
+- **Kuota.** Akun gratis memiliki jatah jam per bulan. Lakukan **Stop** atau **Delete** pada Codespace di <https://github.com/codespaces> setelah selesai.
+- **Opsional:** uncomment `"postCreateCommand": "pip install -r requirements.txt"` di `devcontainer.json` agar `pip install` berjalan otomatis saat container dibuat. Ini berlaku untuk Codespaces maupun lokal.
+- **Keamanan:** file `.env` ikut ter-commit ke repository. Ini aman untuk password latihan seperti `app_password`, tetapi jangan pernah menyimpan password asli atau kredensial Azure di file tersebut.
