@@ -244,3 +244,76 @@ WHERE v.id = (
     LIMIT 1
 );
 ```
+
+
+## Extra Credit (Optional)
+
+### 1. Create a menu table and insert at least 3 menu items for each restaurant
+
+Struktur tabel mengikuti model `Menu` di [models.py](../models.py): harga memakai `NUMERIC(10,2)`, deskripsi memakai `TEXT`, dan nama menu tidak boleh sama dalam satu restoran.
+
+```sql
+CREATE TABLE menu (
+	id SERIAL PRIMARY KEY,
+	restaurant_id INT NOT NULL REFERENCES restaurant(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	item_name VARCHAR(100) NOT NULL,
+	price NUMERIC(10, 2) NOT NULL,
+	description TEXT,
+	CONSTRAINT uq_restaurant_item UNIQUE (restaurant_id, item_name)
+);
+```
+
+Insert 3 menu untuk masing-masing restoran. Restoran dicari berdasarkan nama, sehingga tidak bergantung pada nilai `id`:
+
+```sql
+INSERT INTO menu (restaurant_id, item_name, price, description)
+SELECT r.id, m.item_name, m.price, m.description
+FROM (VALUES
+	-- Warung Makan Sederhana
+	('Warung Makan Sederhana', 'Nasi Rendang',   28000.00, 'Nasi putih dengan rendang daging sapi, sayur daun singkong, dan sambal hijau.'),
+	('Warung Makan Sederhana', 'Gulai Ikan',     26000.00, 'Gulai ikan kakap dengan kuah santan kental dan rempah khas Minang.'),
+	('Warung Makan Sederhana', 'Ayam Pop',       25000.00, 'Ayam kampung rebus goreng sebentar, disajikan dengan sambal tomat.'),
+
+	-- Kopi Senja
+	('Kopi Senja', 'Kopi Susu Gula Aren',        22000.00, 'Espresso, susu segar, dan gula aren dengan es batu.'),
+	('Kopi Senja', 'Caffe Latte',                24000.00, 'Espresso dengan susu steamed, tersedia panas atau dingin.'),
+	('Kopi Senja', 'Croissant Butter',           18000.00, 'Croissant panggang dengan mentega, renyah di luar dan lembut di dalam.'),
+
+	-- Sate Pak Haji
+	('Sate Pak Haji', 'Sate Ayam (10 tusuk)',    25000.00, 'Sate ayam dengan bumbu kacang dan lontong.'),
+	('Sate Pak Haji', 'Sate Kambing (10 tusuk)', 40000.00, 'Sate kambing muda dengan bumbu kecap dan acar bawang.'),
+	('Sate Pak Haji', 'Lontong',                  5000.00, 'Lontong pendamping sate.')
+) AS m(restaurant_name, item_name, price, description)
+JOIN restaurant r ON r.name = m.restaurant_name;
+```
+
+Cek hasilnya (tiap restoran harus punya 3 menu):
+
+```sql
+SELECT r.name AS restaurant_name, COUNT(m.id) AS jumlah_menu
+FROM restaurant r
+LEFT JOIN menu m ON m.restaurant_id = r.id
+GROUP BY r.name
+ORDER BY r.name;
+```
+
+### 2. Display each restaurant with its menu and the average rating from its reviews
+
+```sql
+SELECT r.id AS restaurant_id,
+       r.name AS restaurant_name,
+       m.item_name,
+       m.price,
+       rt.rata_rata_rating
+FROM restaurant r
+LEFT JOIN menu m ON m.restaurant_id = r.id
+LEFT JOIN (
+	SELECT restaurant_id,
+	       ROUND(AVG(rating), 2) AS rata_rata_rating
+	FROM review
+	GROUP BY restaurant_id
+) rt ON rt.restaurant_id = r.id
+ORDER BY r.id, m.id;
+```
+
+Rata-rata rating dihitung lebih dulu per restoran di dalam subquery, baru digabungkan dengan menu. Kalau `review` dan `menu` di-`JOIN` langsung dalam satu query, setiap review akan terduplikasi sebanyak jumlah menu, sehingga hitungan seperti `COUNT` menjadi salah. Memakai subquery menghindari masalah itu.
