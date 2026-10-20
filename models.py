@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import validates
 
 from app import db
@@ -30,3 +30,22 @@ class Review(db.Model):
 
     def __str__(self):
         return f"{self.user_name}: {self.review_date:%x}"
+
+class Menu(db.Model):
+    __tablename__ = 'menu'
+    
+    id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, ForeignKey('restaurant.id', ondelete="CASCADE"), nullable=False)
+    item_name = Column(String(100), nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
+    description = Column(Text)
+
+    # Menjaga agar nama menu tidak boleh sama dalam 1 restoran yang sama
+    __table_args__ = (
+        UniqueConstraint('restaurant_id', 'item_name', name='uq_restaurant_item'),
+    )
+
+    def __str__(self):
+        return f"{self.item_name} - {self.price}"
+
+

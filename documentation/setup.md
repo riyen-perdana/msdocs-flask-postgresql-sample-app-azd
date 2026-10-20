@@ -110,6 +110,65 @@ flask run --host 0.0.0.0 --port 8000
 
 `pip install` perlu dijalankan manual karena `postCreateCommand` di `devcontainer.json` di-comment. Perintah `flask db upgrade` membuat tabel di database `restaurant_reviews`.
 
+### Dari mana tabel `restaurant` dan `review` berasal?
+
+Struktur tabel didefinisikan di [`models.py`](../models.py) (class `Restaurant`, `Review`, dan `Menu`), yang ditulis manual. `models.py` sendiri tidak membuat tabel di database. Tabel dibuat oleh file migrasi di `migrations/versions/`, yang dijalankan oleh `flask db upgrade`:
+
+```
+models.py                      → definisi tabel (ditulis manual)
+   │  flask db migrate         → generate file migrasi
+   ▼
+migrations/versions/xxxx.py    → perintah create_table (hasil generate)
+   │  flask db upgrade         → jalankan migrasi
+   ▼
+tabel di PostgreSQL
+```
+
+Jika Anda mengubah `models.py` (misalnya menambah kolom), jalankan `flask db migrate -m "deskripsi"` lalu `flask db upgrade`. Jangan hanya mengedit file migrasi lama, karena database yang sudah pernah di-upgrade tidak akan menjalankannya lagi.
+
+### Setting `models.py`
+
+File: [models.py](../models.py)
+
+**a. Import tipe kolom dari SQLAlchemy:**
+
+```python
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text
+```
+
+**b. Model `Menu`:**
+
+```python
+class Menu(db.Model):
+    __tablename__ = 'menu'
+    id = Column(Integer, primary_key=True)
+    item_name = Column(String(100))
+    price = Column(Numeric(10, 2))
+    description = Column(Text)
+```
+
+| Kolom | Tipe SQLAlchemy | Tipe di PostgreSQL | Keterangan |
+|---|---|---|---|
+| `id` | `Integer` (primary key) | `INTEGER` | ID menu |
+| `item_name` | `String(100)` | `VARCHAR(100)` | Nama menu, maksimal 100 karakter |
+| `price` | `Numeric(10, 2)` | `NUMERIC(10,2)` | Harga: 10 digit total, 2 di belakang koma |
+| `description` | `Text` | `TEXT` | Deskripsi tanpa batas panjang |
+
+> ⚠️ Untuk harga, gunakan `Numeric(10, 2)`, **bukan** `Decimal(10, 2)`. `Decimal` adalah tipe nilai Python (modul `decimal`), bukan tipe kolom SQLAlchemy, sehingga akan muncul error `name 'Decimal' is not defined`. Saat dibaca dari database, nilai `Numeric` otomatis dikembalikan sebagai `decimal.Decimal`.
+>
+> Gunakan `Text` untuk teks panjang tanpa batas, dan `String(n)` jika ingin membatasi panjang. Jangan menulis dua atribut `description` di class yang sama, karena yang terakhir menimpa yang pertama.
+
+**c. Buat tabel `menu` lewat migrasi:**
+
+File migrasi awal (`migrations/versions/d0c7b8e4b57c_initial_migration.py`) belum berisi tabel `menu`. `flask db upgrade` saja tidak cukup. Generate migrasi baru terlebih dahulu:
+
+```bash
+flask db migrate -m "add menu table"
+flask db upgrade
+```
+
+Periksa file baru di `migrations/versions/` sebelum `upgrade`, pastikan isinya `op.create_table('menu', ...)`. Setelah berhasil, `psql -h db -U app_user -d restaurant_reviews -c "\dt"` akan menampilkan tabel `menu`.
+
 Buka aplikasi di browser: <http://localhost:8000>
 
 ## Langkah 8 — Verifikasi
@@ -122,7 +181,7 @@ psql -h db -U app_user -d restaurant_reviews -c "\dt"
 
 Password: `app_password`
 
-Jika muncul tabel `restaurant`, `review`, dan `alembic_version`, berarti penggantian nama database **berhasil** ✅
+Jika muncul tabel `restaurant`, `review`, dan `alembic_version` (serta `menu` setelah migrasi di bagian "Setting `models.py`"), berarti penggantian nama database **berhasil** ✅
 
 Jika `psql` tidak tersedia, cek lewat extension **SQLTools** di sidebar VS Code (koneksi "Container database").
 
@@ -136,6 +195,7 @@ Jika `psql` tidak tersedia, cek lewat extension **SQLTools** di sidebar VS Code 
 - [ ] Volume lama dihapus (jika ada)
 - [ ] Container berhasil dibuka/rebuild
 - [ ] `flask db upgrade` berhasil
+- [ ] `models.py` → `Menu` memakai `Numeric(10, 2)` dan `Text`, lalu `flask db migrate` + `flask db upgrade` dijalankan
 - [ ] Tabel muncul di database `restaurant_reviews`
 
 ## Troubleshooting
@@ -146,6 +206,8 @@ Jika `psql` tidak tersedia, cek lewat extension **SQLTools** di sidebar VS Code 
 | `database "restaurant_reviews" does not exist` | Volume lama masih berisi database `app` | Lakukan Langkah 5, lalu Rebuild Container. |
 | Container `app` tidak pernah start / `dependency failed to start: container ... is unhealthy` | Perintah healthcheck salah | Periksa Langkah 2b: `-U app_user -d restaurant_reviews`. |
 | `could not translate host name "db"` | Flask dijalankan di Windows, bukan di dalam container | Jalankan Flask dari terminal di dalam Dev Container, atau ubah `DBHOST=localhost` jika PostgreSQL dijalankan terpisah dengan port 5432 terbuka. |
+| `NameError: name 'Decimal' is not defined` | `Decimal` dipakai sebagai tipe kolom di `models.py` | Ganti dengan `Numeric(10, 2)` dan import `Numeric` dari `sqlalchemy`. |
+| Tabel `menu` tidak muncul setelah `flask db upgrade` | Belum ada file migrasi untuk `Menu` | Jalankan `flask db migrate -m "add menu table"` lalu `flask db upgrade`. |
 | `ModuleNotFoundError: No module named 'flask_migrate'` | Dependency belum diinstall | Jalankan `pip install -r requirements.txt`. |
 
 ## Catatan
