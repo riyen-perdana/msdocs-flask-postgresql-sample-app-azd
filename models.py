@@ -17,7 +17,7 @@ class Restaurant(db.Model):
 class Review(db.Model):
     __tablename__ = 'review'
     id = Column(Integer, primary_key=True)
-    restaurant = Column(Integer, ForeignKey('restaurant.id', ondelete="CASCADE"))
+    restaurant_id = Column(Integer, ForeignKey('restaurant.id', ondelete="CASCADE"))
     user_name = Column(String(30))
     rating = Column(Integer)
     review_text = Column(String(500))
