@@ -50,7 +50,7 @@ This project has a [dev container configuration](.devcontainer/), which makes it
     # Create .env with environment variables
     cp .env.sample.devcontainer .env
     "run migration"
-    python -m flask db migrate "initial migration"
+    python -m flask db migrate
     # Run database migrations
     python3 -m flask db upgrade
     # Start the development server
