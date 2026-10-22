@@ -1,3 +1,9 @@
+#### Drop Table Restaurant and Review
+```sql
+DROP TABLE restaurant,review
+```
+
+
 #### Create Table Restaurant
 ```sql
 CREATE TABLE restaurant (
