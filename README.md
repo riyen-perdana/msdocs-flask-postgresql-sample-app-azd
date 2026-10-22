@@ -49,6 +49,8 @@ This project has a [dev container configuration](.devcontainer/), which makes it
     python3 -m pip install -r requirements.txt
     # Create .env with environment variables
     cp .env.sample.devcontainer .env
+    "run migration"
+    python3 db migration -m "First Migration"
     # Run database migrations
     python3 -m flask db upgrade
     # Start the development server
